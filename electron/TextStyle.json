@@ -1,0 +1,112 @@
+{
+  "Comment_Default": {
+    "label": "コメント_既定",
+    "maxLines": 4,
+    "font": {
+      "family": "'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif",
+      "size": 28,
+      "color": "#ffffff",
+      "lineHeight": 1.4,
+      "bold": false,
+      "italic": false,
+      "strike": false
+    },
+    "layout": {
+      "x": null,
+      "y": null,
+      "width": null,
+      "height": null,
+      "widthRatio": 0.95,
+      "heightRatio": 0.25,
+      "padding": 5,
+      "alignHorizontal": "left",
+      "alignVertical": "top",
+      "positionPreset": "bottom_center",
+      "margin": 10
+    },
+    "box": {
+      "enabled": true,
+      "background": "rgba(0,0,30,0.65)",
+      "borderColor": "#6666aa",
+      "borderWidth": 1,
+      "borderRadius": 4
+    },
+    "typing": {
+      "enabled": true,
+      "speed": 50,
+      "allowSkip": true
+    }
+  },
+  "Subtitle_Default": {
+    "label": "字幕_既定",
+    "maxLines": 1,
+    "font": {
+      "family": "'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif",
+      "size": 26,
+      "color": "#ffffff",
+      "lineHeight": 1.2,
+      "bold": false,
+      "italic": false,
+      "strike": false
+    },
+    "layout": {
+      "x": null,
+      "y": null,
+      "width": null,
+      "height": 60,
+      "widthRatio": 1,
+      "heightRatio": null,
+      "padding": 0,
+      "alignHorizontal": "center",
+      "alignVertical": "middle",
+      "positionPreset": "bottom_center",
+      "margin": 12
+    },
+    "box": {
+      "enabled": false
+    },
+    "typing": {
+      "enabled": false,
+      "speed": 0,
+      "allowSkip": false
+    }
+  },
+  "Char_Name_Comment": {
+    "label": "キャラ名_コメント用",
+    "maxLines": 1,
+    "font": {
+      "family": "'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif",
+      "size": 28,
+      "color": "#ffffff",
+      "lineHeight": 1.4,
+      "bold": false,
+      "italic": false,
+      "strike": false
+    },
+    "layout": {
+      "x": 32,
+      "y": 480,
+      "width": 200,
+      "height": 52,
+      "widthRatio": 0.95,
+      "heightRatio": 0.25,
+      "padding": 5,
+      "alignHorizontal": "left",
+      "alignVertical": "top",
+      "positionPreset": "bottom_center",
+      "margin": 10
+    },
+    "box": {
+      "enabled": true,
+      "background": "rgba(0,0,30,0.65)",
+      "borderColor": "#6666aa",
+      "borderWidth": 1,
+      "borderRadius": 4
+    },
+    "typing": {
+      "enabled": false,
+      "speed": 50,
+      "allowSkip": false
+    }
+  }
+}

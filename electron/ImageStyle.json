@@ -1,0 +1,60 @@
+{
+  "Background_Base": {
+    "label": "背景（基本）",
+    "type": "background",
+    "opacity": 1,
+    "blendMode": "normal",
+    "scaleMode": "fill",
+    "layout": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 720,
+      "widthRatio": 1,
+      "heightRatio": 1,
+      "positionPreset": "center"
+    },
+    "box": {
+      "enabled": false,
+      "background": "rgba(0,0,0,0.4)",
+      "borderColor": "#444488",
+      "borderWidth": 3,
+      "borderRadius": 3
+    },
+    "filters": {
+      "brightness": 1,
+      "contrast": 1,
+      "saturation": 1,
+      "blur": 0
+    }
+  },
+  "Character_Front": {
+    "label": "キャラ（前）",
+    "type": "character",
+    "opacity": 1,
+    "blendMode": "normal",
+    "scaleMode": "contain",
+    "layout": {
+      "x": null,
+      "y": null,
+      "width": null,
+      "height": null,
+      "widthRatio": 1,
+      "heightRatio": 1,
+      "positionPreset": "center"
+    },
+    "box": {
+      "enabled": false,
+      "background": "rgba(0,0,0,0.4)",
+      "borderColor": "#444488",
+      "borderWidth": 3,
+      "borderRadius": 3
+    },
+    "filters": {
+      "brightness": 1,
+      "contrast": 1,
+      "saturation": 1,
+      "blur": 0
+    }
+  }
+}

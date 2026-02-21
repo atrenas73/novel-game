@@ -1,0 +1,64 @@
+{
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "layers": {
+    "bg_base": {
+      "id": "bg_base",
+      "type": "image",
+      "label": "背景（ベース）",
+      "z": 0,
+      "enabled": true
+    },
+    "bg_effect": {
+      "id": "bg_effect",
+      "type": "image",
+      "label": "背景（演出）",
+      "z": 5,
+      "enabled": true
+    },
+    "image_back": {
+      "id": "image_back",
+      "type": "image",
+      "label": "画像（後）",
+      "z": 10,
+      "enabled": true
+    },
+    "image_main": {
+      "id": "image_main",
+      "type": "image",
+      "label": "画像（中）",
+      "z": 20,
+      "enabled": true
+    },
+    "image_front": {
+      "id": "image_front",
+      "type": "image",
+      "label": "画像（前）",
+      "z": 30,
+      "enabled": true
+    },
+    "ui_base": {
+      "id": "ui_base",
+      "type": "ui",
+      "label": "UI（枠・背景）",
+      "z": 40,
+      "enabled": true
+    },
+    "text_main": {
+      "id": "text_main",
+      "type": "text",
+      "label": "テキスト",
+      "z": 50,
+      "enabled": true
+    },
+    "text_char_name": {
+      "id": "text_char_name",
+      "type": "text",
+      "label": "テキスト（キャラ名）",
+      "z": 60,
+      "enabled": true
+    }
+  }
+}
