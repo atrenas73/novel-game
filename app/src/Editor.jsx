@@ -970,48 +970,59 @@ useEffect(() => {
 
 // ★修正: LayerOnOffNodeからの出力をLayerPreviewNodeに同期
 useEffect(() => {
-  // layerOnOffノードを探す
-  const layerOnOffNodes = nodes.filter(n => n.type === 'layerOnOff');
-  
-  // 更新が必要かどうかを追跡
   let hasChanges = false;
-  
+
   const newNodes = nodes.map(node => {
-    if (node.type === 'layerPreview') {
-      // このプレビューノードに入力しているエッジを探す
-      const incomingEdges = edges.filter(e => e.target === node.id);
-      
-      // 接続元のlayerOnOffノードからlayerStatesを収集
-      const layerStates = {};
-      incomingEdges.forEach(edge => {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        if (sourceNode?.type === 'layerOnOff' && sourceNode.data?.layerStates) {
+    if (node.type !== 'layerPreview') return node;
+
+    const incomingEdges = edges.filter(e => e.target === node.id);
+    const visited = new Set();
+    const collectedLayerNodes = [];
+    const layerStates = {};
+    let foundLayerOnOff = false;
+
+    const exploreUpstream = (nodeId) => {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+
+      const sourceNode = nodes.find(n => n.id === nodeId);
+      if (!sourceNode) return;
+
+      if (sourceNode.type === 'layerOnOff') {
+        foundLayerOnOff = true;
+
+        if (sourceNode.data?.layerStates) {
           Object.assign(layerStates, sourceNode.data.layerStates);
+        } else if (Array.isArray(sourceNode.data?.outputLayers)) {
+          sourceNode.data.outputLayers.forEach(layer => {
+            if (layer?.id) layerStates[layer.id] = layer.visible !== false;
+          });
         }
-      });
-      
-      // 現在のlayerStatesと比較
-      const currentStates = node.data?.inputs?.layerStates || {};
-      if (JSON.stringify(currentStates) !== JSON.stringify(layerStates)) {
-        hasChanges = true;
-        
-        // 全レイヤーノードを収集
-        const allLayerNodes = nodes.filter(n => 
-          n.type === 'layerImage' || n.type === 'layerText'
-        );
-        
-        // layerStatesを適用したレイヤーリストを作成
-        const visibleLayers = allLayerNodes
+      }
+
+      if (sourceNode.type === 'layerImage' || sourceNode.type === 'layerText') {
+        collectedLayerNodes.push(sourceNode);
+      }
+
+      const inputEdges = edges.filter(e => e.target === nodeId);
+      inputEdges.forEach(edge => exploreUpstream(edge.source));
+    };
+
+    incomingEdges.forEach(edge => exploreUpstream(edge.source));
+
+    // 要件: 上流にOnOffがない場合は全OFF
+    const visibleLayers = !foundLayerOnOff
+      ? []
+      : collectedLayerNodes
           .map(n => {
             const layerId = n.data?.layerId || n.data?.layer;
             if (!layerId) return null;
-            
-            // layerStatesで明示的にfalseなら非表示
+
             const isVisible = layerStates[layerId] !== false;
-            
-            // レイヤー設定を取得
+            if (!isVisible) return null;
+
             const layerConfig = editorConfig?.layers?.[layerId] || {};
-            
+
             return {
               id: layerId,
               name: layerConfig.label || n.data?.label || layerId,
@@ -1032,36 +1043,38 @@ useEffect(() => {
               },
               source: 'chain',
               sourceNodeId: n.id,
-              visible: isVisible  // ← 表示状態を明示的に設定
+              visible: true
             };
           })
-          .filter(l => l !== null)  // nullを除去
-          .filter(l => l.visible)   // visible=trueのものだけ残す
-          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));  // zIndexでソート
-        
-        console.log('LayerPreviewNode 更新:', {
-          layerStates,
-          visibleLayers: visibleLayers.map(l => ({ id: l.id, visible: l.visible }))
-        });
-        
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            inputs: {
-              ...node.data.inputs,
-              layerStates
-            },
-            layers: visibleLayers,  // 表示状態が適用されたレイヤーのみ
-            layerStates: layerStates
-          }
-        };
-      }
+          .filter(l => l !== null)
+          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+    const currentStates = node.data?.inputs?.layerStates || {};
+    const currentLayers = node.data?.layers || [];
+
+    if (
+      JSON.stringify(currentStates) !== JSON.stringify(layerStates) ||
+      JSON.stringify(currentLayers) !== JSON.stringify(visibleLayers)
+    ) {
+      hasChanges = true;
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          inputs: {
+            ...node.data.inputs,
+            layerStates
+          },
+          layers: visibleLayers,
+          layerStates: layerStates
+        }
+      };
     }
+
     return node;
   });
-  
-  // 変更があった場合のみsetNodesを実行
+
   if (hasChanges) {
     console.log('LayerPreviewNode 表示状態更新');
     setNodes(newNodes);

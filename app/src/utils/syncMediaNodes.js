@@ -126,54 +126,84 @@ const syncMediaNodes = (currentNodes, currentEdges) => {
   };
 
   /* ================= ヘルパー関数: プレビュー用に全チェーンからレイヤーを収集（上流全体） ================= */
-  const collectAllUpstreamLayers = (startNodeId, allNodes, allEdges) => {
-    const collectedLayers = [];
-    const processedNodes = new Set();
-    const layerStates = {};
-    
-    const exploreUpstream = (nodeId, visited = new Set()) => {
-      if (visited.has(nodeId) || processedNodes.has(nodeId)) return;
-      visited.add(nodeId);
-      processedNodes.add(nodeId);
-      
-      const node = allNodes.find(n => n.id === nodeId);
-      if (!node) return;
-      
-      // ★ LayerOnOffNodeの場合 - 出力データを直接使用
-      if (node.type === 'layerOnOff' && node.data?.outputLayers) {
+const collectAllUpstreamLayers = (startNodeId, allNodes, allEdges) => {
+  const mergedLayerStates = {};
+  let foundLayerOnOff = false;
+
+  // 1回目: プレビューから上流を探索してLayerOnOffのON/OFF情報だけ集約
+  const visitedForOnOff = new Set();
+  const exploreForOnOff = (nodeId) => {
+    if (visitedForOnOff.has(nodeId)) return;
+    visitedForOnOff.add(nodeId);
+
+    const node = allNodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    if (node.type === 'layerOnOff') {
+      foundLayerOnOff = true;
+
+      if (node.data?.layerStates) {
+        Object.assign(mergedLayerStates, node.data.layerStates);
+      } else if (Array.isArray(node.data?.outputLayers)) {
         node.data.outputLayers.forEach(layer => {
-          if (!collectedLayers.some(l => l.sourceNodeId === layer.nodeId)) {
-            collectedLayers.push({
-              id: layer.id,
-              name: layer.name,
-              type: layer.type,
-              zIndex: layer.zIndex,
-              nodeId: node.id,
-              sourceNodeId: layer.nodeId,
-              data: {
-                ...layer.data,
-                ...layer,
-              },
-              source: 'chain'
-            });
-          }
+          if (layer?.id) mergedLayerStates[layer.id] = true;
         });
-        
-        // layerStatesを収集
-        if (node.data.layerStates) {
-          Object.assign(layerStates, node.data.layerStates);
-        }
       }
-      // レイヤーノードの場合
-      else if (node.type === 'layerImage' || node.type === 'layerText') {
-        const layerId = node.data?.layerId || node.data?.layer || `layer_${node.id}`;
+    }
+
+    // 上流のみ探索（previewより下流は探索しない）
+    const inputEdges = allEdges.filter(e => e.target === nodeId);
+    inputEdges.forEach(edge => exploreForOnOff(edge.source));
+  };
+
+  exploreForOnOff(startNodeId);
+
+  // 要件: 上流にLayerOnOffが無い場合は全レイヤーOFF扱い（何も表示しない）
+  if (!foundLayerOnOff) {
+    return {
+      layers: [],
+      layerStates: {}
+    };
+  }
+
+  const onLayerIds = new Set(
+    Object.entries(mergedLayerStates)
+      .filter(([, isVisible]) => isVisible !== false)
+      .map(([layerId]) => layerId)
+  );
+
+  // ONが1つも無い場合は表示対象なし
+  if (onLayerIds.size === 0) {
+    return {
+      layers: [],
+      layerStates: mergedLayerStates
+    };
+  }
+
+  // 2回目: 再度上流探索して、ON集合に一致するレイヤー情報だけ収集
+  const collectedLayers = [];
+  const pendingLayerIds = new Set(onLayerIds);
+  const visitedForLayerData = new Set();
+
+  const exploreForLayerData = (nodeId) => {
+    // 要件: 全ONレイヤー収集完了で探索終了
+    if (pendingLayerIds.size === 0) return;
+
+    if (visitedForLayerData.has(nodeId)) return;
+    visitedForLayerData.add(nodeId);
+
+    const node = allNodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    if (node.type === 'layerImage' || node.type === 'layerText') {
+      const layerId = node.data?.layerId || node.data?.layer || `layer_${node.id}`;
+
+      if (pendingLayerIds.has(layerId)) {
         const editorConfig = node.data?.editorConfig;
         const layerConfig = editorConfig?.layers?.[layerId] || {};
-        
-        // ★ output があればそれを使用
         const outputData = node.data?.output || {};
-        
-        const layerInfo = {
+
+        collectedLayers.push({
           id: layerId,
           name: layerConfig.label || node.data?.label || node.type,
           type: node.type === 'layerImage' ? 'image' : 'text',
@@ -197,28 +227,28 @@ const syncMediaNodes = (currentNodes, currentEdges) => {
           },
           source: 'chain',
           sourceNodeId: node.id
-        };
-        
-        // 重複を避けて追加
-        if (!collectedLayers.some(l => l.sourceNodeId === node.id)) {
-          collectedLayers.push(layerInfo);
-        }
+        });
+
+        // 要件: 収集できたONレイヤーIDは集合から削除
+        pendingLayerIds.delete(layerId);
       }
-      
-      // 上流を探索（入力エッジ）
-      const inputEdges = allEdges.filter(e => e.target === nodeId);
-      inputEdges.forEach(edge => {
-        exploreUpstream(edge.source, new Set(visited));
-      });
-    };
-    
-    exploreUpstream(startNodeId);
-    
-    // zIndex順にソート
-    collectedLayers.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-    
-    return { layers: collectedLayers, layerStates };
+    }
+
+    // 上流のみ探索（previewより下流は探索しない）
+    const inputEdges = allEdges.filter(e => e.target === nodeId);
+    inputEdges.forEach(edge => exploreForLayerData(edge.source));
   };
+
+  exploreForLayerData(startNodeId);
+
+  // 上流に見つからないONレイヤーは未収集のまま（=何も表示しない）
+  collectedLayers.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+  return {
+    layers: collectedLayers,
+    layerStates: mergedLayerStates
+  };
+};
 
   const updatedNodes = currentNodes.map((node) => {
     /* ================= LayerOnOffNode ================= */
