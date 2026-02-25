@@ -149,6 +149,14 @@ const collectAllUpstreamLayers = (startNodeId, allNodes, allEdges) => {
           if (layer?.id) mergedLayerStates[layer.id] = true;
         });
       }
+
+      // layerStatesに未定義のレイヤーはconfig.enabledを初期値として扱う
+      const configLayers = node.data?.editorConfig?.layers || {};
+      Object.entries(configLayers).forEach(([layerId, layerConfig]) => {
+        if (mergedLayerStates[layerId] === undefined) {
+          mergedLayerStates[layerId] = !!layerConfig?.enabled;
+        }
+      });
     }
 
     // 上流のみ探索（previewより下流は探索しない）
@@ -168,7 +176,7 @@ const collectAllUpstreamLayers = (startNodeId, allNodes, allEdges) => {
 
   const onLayerIds = new Set(
     Object.entries(mergedLayerStates)
-      .filter(([, isVisible]) => isVisible !== false)
+      .filter(([, isVisible]) => isVisible === true)
       .map(([layerId]) => layerId)
   );
 

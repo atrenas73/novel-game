@@ -87,51 +87,77 @@ const LayerOnOffNode = (props) => {
     return colorMap[typeId] || '#888';
   };
 
-  // ★ 修正：上流データを保持し、表示状態を初期化
+  // configレイヤーに対する初期表示状態を設定（未設定キーのみ）
   useEffect(() => {
-    if (!data?.layers) return;
-    
-    // 上流データを保存
-    setUpstreamLayers(data.layers);
-    
-    // 上流の表示状態をlayerStatesの初期値として設定
+    if (!configLayers.length) return;
+
     setLayerStates(prev => {
       const newStates = { ...prev };
-      data.layers.forEach(layer => {
-        // 上流のvisible状態を引き継ぐ（なければconfigのenabledを使用）
-        if (layer.visible !== undefined) {
-          newStates[layer.id] = layer.visible;
-        } else if (newStates[layer.id] === undefined) {
-          // configから既に設定済みの場合はそのまま
-          const configLayer = configLayers.find(cl => cl.id === layer.id);
-          newStates[layer.id] = configLayer?.enabled || false;
+      configLayers.forEach(layer => {
+        if (newStates[layer.id] === undefined) {
+          newStates[layer.id] = !!layer.enabled;
         }
       });
       return newStates;
     });
-    
+  }, [configLayers]);
+
+  // ★ 修正：上流データを保持し、表示状態を初期化
+  useEffect(() => {
+    if (!data?.layers) {
+      setUpstreamLayers([]);
+      return;
+    }
+
+    // 上流データを保存
+    setUpstreamLayers(data.layers);
+
+    // layerStatesの初期値を設定（既存の手動設定は上書きしない）
+    setLayerStates(prev => {
+      const newStates = { ...prev };
+      data.layers.forEach(layer => {
+        // 既存の状態がある場合は維持（全OFF後の再接続などで復帰させない）
+        if (newStates[layer.id] === undefined) {
+          const configLayer = configLayers.find(cl => cl.id === layer.id);
+
+          // 上流未接続時はconfig値で表示し、未定義ならOFF。
+          if (configLayer?.enabled !== undefined) {
+            newStates[layer.id] = !!configLayer.enabled;
+          } else {
+            newStates[layer.id] = false;
+          }
+        }
+      });
+      return newStates;
+    });
+
     console.log('[LayerOnOffNode] 上流データを受信:', {
       layers: data.layers.map(l => ({ id: l.id, visible: l.visible }))
     });
-    
+
   }, [data?.layers, configLayers]);
 
   // 3. 表示/非表示を切り替え
   const toggleLayer = useCallback((layerId) => {
     setLayerStates(prev => {
+      const configLayer = configLayers.find(layer => layer.id === layerId);
+      const currentVisible =
+        prev[layerId] !== undefined ? !!prev[layerId] : !!configLayer?.enabled;
+
       const newStates = {
         ...prev,
-        [layerId]: !prev[layerId]
+        [layerId]: !currentVisible
       };
       
       console.log(`[LayerOnOffNode:${id}] トグル:`, {
         layerId,
+        prevState: currentVisible,
         newState: newStates[layerId]
       });
       
       return newStates;
     });
-  }, [id]);
+  }, [id, configLayers]);
 
   // 4. 表示中のレイヤーを全てON/OFF
   const toggleCurrentLayers = useCallback((visible) => {
@@ -157,21 +183,29 @@ const LayerOnOffNode = (props) => {
     return configLayers.filter(layer => layer.type === activeTab);
   }, [activeTab, configLayers]);
 
+
+  // レイヤーの表示状態を取得（state未定義時はconfig.enabledを参照）
+  const resolveLayerVisible = useCallback((layerId) => {
+    if (layerStates[layerId] !== undefined) return !!layerStates[layerId];
+    const configLayer = configLayers.find(layer => layer.id === layerId);
+    return !!configLayer?.enabled;
+  }, [layerStates, configLayers]);
+
   // 統計情報（UI表示用）
   const stats = useMemo(() => {
-    const visibleCount = configLayers.filter(l => layerStates[l.id]).length;
+    const visibleCount = configLayers.filter(l => resolveLayerVisible(l.id)).length;
     
     const tabStats = {};
     layerTypes.forEach(type => {
       const typeLayers = type.id === 'all' 
         ? configLayers 
         : configLayers.filter(l => l.type === type.id);
-      const visible = typeLayers.filter(l => layerStates[l.id]).length;
+      const visible = typeLayers.filter(l => resolveLayerVisible(l.id)).length;
       tabStats[type.id] = { total: typeLayers.length, visible };
     });
     
     const currentLayers = getCurrentTabLayers();
-    const currentVisible = currentLayers.filter(l => layerStates[l.id]).length;
+    const currentVisible = currentLayers.filter(l => resolveLayerVisible(l.id)).length;
     
     return {
       total: configLayers.length,
@@ -180,7 +214,7 @@ const LayerOnOffNode = (props) => {
       currentLayers: currentLayers.length,
       currentVisible
     };
-  }, [configLayers, layerStates, layerTypes, getCurrentTabLayers]);
+  }, [configLayers, layerTypes, getCurrentTabLayers, resolveLayerVisible]);
 
   // ★ 修正：出力データの生成（上流データをベースにON/OFFを適用）
   const outputData = useMemo(() => {
@@ -196,7 +230,7 @@ const LayerOnOffNode = (props) => {
     
     // 上流データをフィルタリングして出力
     const visibleLayers = upstreamLayers
-      .filter(layer => layerStates[layer.id])
+      .filter(layer => resolveLayerVisible(layer.id))
       .map(layer => ({
         ...layer,  // 上流のデータをそのまま保持（画像URL、テキスト内容など）
         visible: true,  // ON/OFF状態を上書き
@@ -212,20 +246,41 @@ const LayerOnOffNode = (props) => {
       _nodeType: 'LayerOnOffNode',
       _timestamp: Date.now()
     };
-  }, [upstreamLayers, layerStates]);
+  }, [upstreamLayers, layerStates, resolveLayerVisible]);
 
   // 自身のdataを更新
   useEffect(() => {
-    if (props.data) {
+    if (!props.data) return;
+
+    const currentLayerStates = props.data.layerStates || {};
+    const currentOutputLayers = props.data.outputLayers || [];
+
+    const statesChanged = JSON.stringify(currentLayerStates) !== JSON.stringify(layerStates);
+    const outputChanged = JSON.stringify(currentOutputLayers) !== JSON.stringify(outputData.layers);
+
+    // 差分がない場合は親へ通知しない（無限更新ループ回避）
+    if (!statesChanged && !outputChanged) return;
+
+    const nextData = {
+      ...props.data,
+      layerStates,
+      outputLayers: outputData.layers,
+      _timestamp: Date.now(),
+    };
+
+    if (typeof props.data.onChange === 'function') {
+      props.data.onChange(nextData);
+    } else {
+      // フォールバック: onChange未実装時のみ直接更新
       props.data.layerStates = layerStates;
       props.data.outputLayers = outputData.layers;
-      props.data._timestamp = Date.now();
-      
-      console.log(`[LayerOnOffNode:${id}] 出力更新:`, {
-        layerStates,
-        visibleCount: outputData.layers.length
-      });
+      props.data._timestamp = nextData._timestamp;
     }
+
+    console.log(`[LayerOnOffNode:${id}] 出力更新:`, {
+      layerStates,
+      visibleCount: outputData.layers.length
+    });
   }, [layerStates, outputData, id, props.data]);
 
   // 現在のタブのレイヤー（UI表示用）
@@ -316,7 +371,7 @@ const LayerOnOffNode = (props) => {
           marginBottom: '8px'
         }}>
           {currentLayers.map(layer => {
-            const isVisible = !!layerStates[layer.id];
+            const isVisible = resolveLayerVisible(layer.id);
             const hasChain = upstreamLayers.some(ul => ul.id === layer.id);
             const zDisplay = String(layer.zIndex).padStart(2, '0');
             
@@ -432,3 +487,4 @@ const LayerOnOffNode = (props) => {
 };
 
 export default memo(LayerOnOffNode);
+

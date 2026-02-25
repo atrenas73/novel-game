@@ -1916,6 +1916,14 @@ const addLayerOnOffNodeFromMenu = useCallback(() => {
         ],
         
         DATA_TYPES,
+          onChange: (newData) => {
+          setNodes((current) => {
+            const updated = current.map((n) =>
+              n.id === id ? { ...n, data: newData } : n
+            );
+            return syncMediaNodes(updated, edgesRef.current || []);
+          });
+        },
       },
       style: {
         width: 'auto',
