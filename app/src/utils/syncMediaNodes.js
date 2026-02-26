@@ -494,42 +494,6 @@ const collectAllUpstreamLayers = (startNodeId, allNodes, allEdges) => {
     
     /* ================= LayerTextNode ================= */
     else if (node.type === 'layerText') {
-      const incoming = currentEdges.find(
-        (e) => e.target === node.id && e.targetHandle === 'input'
-      );
-
-      if (!incoming) {
-        if (node.data.text || node.data.characterName) {
-          hasAnyChange = true;
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              text: '',
-              characterName: '',
-            },
-          };
-        }
-        return node;
-      }
-      
-      // テキストノードの上流からのデータ更新処理
-      const sourceNode = currentNodes.find((n) => n.id === incoming.source);
-      if (sourceNode?.type === 'layerText' && sourceNode.data) {
-        if (node.data.text !== sourceNode.data.text || 
-            node.data.characterName !== sourceNode.data.characterName) {
-          hasAnyChange = true;
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              text: sourceNode.data.text,
-              characterName: sourceNode.data.characterName,
-            },
-          };
-        }
-      }
-      
       return node;
     }
     

@@ -1011,12 +1011,16 @@ useEffect(() => {
     incomingEdges.forEach(edge => exploreUpstream(edge.source));
 
     // 要件: 上流にOnOffがない場合は全OFF
+    // 同一layerIdが複数ある場合は、プレビューに近い（後段）ノードを優先する
+    const seenLayerIds = new Set();
     const visibleLayers = !foundLayerOnOff
       ? []
       : collectedLayerNodes
           .map(n => {
             const layerId = n.data?.layerId || n.data?.layer;
-            if (!layerId) return null;
+            if (!layerId || seenLayerIds.has(layerId)) return null;
+
+            seenLayerIds.add(layerId);
 
             const isVisible = layerStates[layerId] !== false;
             if (!isVisible) return null;
