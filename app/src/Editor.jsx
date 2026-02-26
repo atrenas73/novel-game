@@ -1030,15 +1030,16 @@ useEffect(() => {
               zIndex: layerConfig.z || n.data?.zIndex || 0,
               nodeId: n.id,
               data: {
-                ...n.data,
-                imageUrl: n.data?.imageUrl,
-                text: n.data?.text,
-                displayX: n.data?.displayX,
-                displayY: n.data?.displayY,
-                displayWidth: n.data?.displayWidth,
-                displayHeight: n.data?.displayHeight,
-                opacity: n.data?.opacity,
-                blendMode: n.data?.blendMode,
+                ...n.data?.output,
+                imageUrl: n.data?.output?.imageUrl ?? n.data?.imageUrl,
+                text: n.data?.output?.text ?? n.data?.text,
+                textStyle: n.data?.output?.textStyle ?? n.data?.textStyle,
+                displayX: n.data?.output?.displayX ?? n.data?.displayX ?? n.data?.output?.x ?? n.data?.x ?? 0,
+                displayY: n.data?.output?.displayY ?? n.data?.displayY ?? n.data?.output?.y ?? n.data?.y ?? 0,
+                displayWidth: n.data?.output?.displayWidth ?? n.data?.displayWidth ?? n.data?.output?.width ?? n.data?.width,
+                displayHeight: n.data?.output?.displayHeight ?? n.data?.displayHeight ?? n.data?.output?.height ?? n.data?.height,
+                opacity: n.data?.output?.opacity ?? n.data?.opacity,
+                blendMode: n.data?.output?.blendMode ?? n.data?.blendMode,
                 layerConfig: layerConfig
               },
               source: 'chain',
@@ -1812,6 +1813,14 @@ const addLayerTimelineNode = useCallback(() => {
         ],
 
         DATA_TYPES,
+          onChange: (newData) => {
+          setNodes((current) => {
+            const updated = current.map((n) =>
+              n.id === id ? { ...n, data: newData } : n
+            );
+            return syncMediaNodes(updated, edgesRef.current || []);
+          });
+        },
       },
       style: {
         width: canvasW,
