@@ -1081,7 +1081,6 @@ useEffect(() => {
   });
 
   if (hasChanges) {
-    console.log('LayerPreviewNode 表示状態更新');
     setNodes(newNodes);
   }
 }, [nodes, edges, editorConfig]); // editorConfigを依存配列に追加

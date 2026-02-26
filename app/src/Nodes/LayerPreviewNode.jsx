@@ -32,13 +32,6 @@ const LayerPreviewNode = (props) => {
 
     // layerStatesを取得（inputsからのデータを優先）
     const layerStates = data?.inputs?.layerStates || data?.layerStates || {};
-    
-    console.log(`[LayerPreviewNode:${id}] レイヤー状態:`, {
-      hasLayerStates: Object.keys(layerStates).length > 0,
-      layerStatesKeys: Object.keys(layerStates),
-      layersCount: data.layers.length,
-      hasInputs: !!data?.inputs
-    });
 
     // layerStatesを適用して表示するレイヤーをフィルタリング
     const visibleLayers = data.layers
@@ -58,12 +51,6 @@ const LayerPreviewNode = (props) => {
       })
       .filter(layer => layer !== null && layer.visible) // visible=trueのものだけ残す
       .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)); // zIndexでソート
-
-    console.log(`[LayerPreviewNode:${id}] 描画レイヤー:`, {
-      total: data.layers.length,
-      visible: visibleLayers.length,
-      layers: visibleLayers.map(l => ({ id: l.id, visible: l.visible }))
-    });
 
     setDisplayLayers(visibleLayers);
   }, [data?.layers, data?.inputs, data?.layerStates, id]);
@@ -98,29 +85,6 @@ const LayerPreviewNode = (props) => {
         flexDirection: 'column',
         gap: '12px'
       }}>
-        
-        {/* ヘッダー */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingBottom: '6px',
-          borderBottom: '1px solid #333'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 'bold',
-            color: '#9C27B0'
-          }}>
-            レイヤープレビュー
-          </div>
-          <div style={{
-            fontSize: '10px',
-            color: '#aaa'
-          }}>
-            表示: {displayLayers.length}/{data?.layers?.length || 0}
-          </div>
-        </div>
 
         {/* プレビューキャンバス */}
         <div style={{
@@ -225,23 +189,6 @@ const LayerPreviewNode = (props) => {
             }
             return null;
           })}
-
-          {/* デバッグ情報 */}
-          {process.env.NODE_ENV === 'development' && (
-            <div style={{
-              position: 'absolute',
-              bottom: 8,
-              left: 8,
-              background: 'rgba(0,0,0,0.7)',
-              color: '#fff',
-              fontSize: 10,
-              padding: '4px 8px',
-              borderRadius: 4,
-              zIndex: 9999
-            }}>
-              {displayLayers.map(l => `${l.id}:${l.visible ? 'ON' : 'OFF'}`).join(' | ')}
-            </div>
-          )}
         </div>
       </div>
 
